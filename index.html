@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="uk" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Coffee Timer" />
+  <meta name="theme-color" content="#0A0B0E" />
+  <title>Coffee Timer — Precision Brew Console</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Шрифти: Plus Jakarta Sans + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-code: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: var(--font-main);
+      background-color: #050608;
+      color: #FFFFFF;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Металева кнопка точнісінько як у референсі */
+    .metallic-btn {
+      background: linear-gradient(180deg, #FFFFFF 0%, #E3E7ED 48%, #B4BAC7 100%);
+      color: #0A0C10;
+      box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15), inset 0 1px 1px #FFFFFF, inset 0 -1px 2px rgba(0,0,0,0.25);
+      transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.2s ease;
+      touch-action: manipulation;
+    }
+    .metallic-btn:active {
+      transform: scale(0.98);
+      filter: brightness(0.92);
+    }
+
+    /* Анодований титан: картки з ледь помітним контуром */
+    .titanium-card {
+      background: linear-gradient(170deg, rgba(25, 28, 36, 0.88) 0%, rgba(14, 16, 22, 0.94) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .circle-progress-ring {
+      transition: stroke-dashoffset 0.35s ease-out;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    @keyframes metallicPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.25); }
+      50% { box-shadow: 0 0 20px 4px rgba(255, 255, 255, 0.55); }
+    }
+    .pulse-ready {
+      animation: metallicPulse 1.6s infinite;
+    }
+
+    .screen-view {
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .screen-hidden {
+      display: none !important;
+      opacity: 0;
+      transform: scale(0.98);
+    }
+  </style>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            chassis: {
+              950: '#07080B',
+              900: '#0E1015',
+              850: '#14171E',
+              800: '#1B1F28',
+              700: '#262C38',
+              600: '#3D4556',
+              500: '#616C82',
+              400: '#8E99AD',
+              300: '#B8C2D4',
+              200: '#DCE2EE',
+              100: '#F2F5FA'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="bg-[#050608] text-white min-h-screen font-sans antialiased selection:bg-white selection:text-black flex justify-center items-center p-0 md:p-6 overflow-hidden">
+
+  <!-- Мобільне шасі: розраховано під системний статус-бар iPhone зверху та банер tiiny.host знизу -->
+  <main class="w-full max-w-[430px] h-[100dvh] md:h-[880px] bg-chassis-900 flex flex-col justify-between relative shadow-[0_30px_90px_rgba(0,0,0,0.95)] md:rounded-[44px] overflow-hidden md:border md:border-white/10 pt-[max(env(safe-area-inset-top),38px)] pb-[calc(52px+env(safe-area-inset-bottom,0px))] md:pt-4 md:pb-4">
+
+    <!-- ========================================================================= -->
+    <!-- ЕКРАН 1: COFFEE TIMER (ГОЛОВНИЙ)                                          -->
+    <!-- ========================================================================= -->
+    <section id="screenMethod" class="screen-view flex-1 flex flex-col justify-between px-4 pt-0 pb-1 select-none overflow-hidden">
+      
+      <!-- Верхній заголовок та перемикач методів -->
+      <div>
+        <div class="flex items-center justify-between text-chassis-500 mb-0.5">
+          <button id="btnHeaderInfo" type="button" class="text-chassis-400 hover:text-white p-1 -ml-1 transition-colors" title="Довідник">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <span class="text-[9.5px] font-mono uppercase tracking-[0.22em] text-chassis-400">BREW SPEC</span>
+          <span id="methodOptimalBadge" class="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full">2:20 – 2:45 хв</span>
+        </div>
+
+        <h1 class="text-xl font-bold tracking-tight text-white leading-tight">Coffee Timer</h1>
+
+        <!-- Сегментований перемикач 3 методів -->
+        <div class="grid grid-cols-3 gap-1 p-0.5 bg-chassis-850 rounded-xl border border-white/10 my-1.5">
+          <button id="methodBtnV60" type="button" class="py-1 px-1 rounded-lg text-[10px] font-mono font-bold tracking-wide transition-all bg-white text-black shadow-md">
+            Воронка V60
+          </button>
+          <button id="methodBtnCup" type="button" class="py-1 px-1 rounded-lg text-[10px] font-mono font-medium tracking-wide transition-all text-chassis-400 hover:text-white">
+            В чашці (250)
+          </button>
+          <button id="methodBtnFrench" type="button" class="py-1 px-1 rounded-lg text-[10px] font-mono font-medium tracking-wide transition-all text-chassis-400 hover:text-white">
+            Френч (300)
+          </button>
+        </div>
+
+        <!-- Мінімалістичний горизонтальний перемикач порцій ТІЛЬКИ для V60 -->
+        <div id="v60PortionSelector" class="grid grid-cols-2 gap-1.5 my-1">
+          <button id="btnSelectCup1" type="button" class="py-1 px-2 rounded-lg text-[10px] font-mono font-bold tracking-wide transition-all bg-white text-black border border-white shadow-sm flex items-center justify-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-black shrink-0"></span>
+            <span>1 ЧАШКА (250 мл)</span>
+          </button>
+          <button id="btnSelectCup2" type="button" class="py-1 px-2 rounded-lg text-[10px] font-mono font-medium tracking-wide transition-all bg-chassis-850 text-chassis-400 border border-white/10 hover:text-white flex items-center justify-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-chassis-500 shrink-0"></span>
+            <span>2 ЧАШКИ (500 мл)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Центральний блок: Збільшене креслення девайса + характеристики праворуч -->
+      <div class="relative w-full flex items-center justify-between gap-3 my-auto py-1">
+        
+        <!-- Векторний малюнок ліворуч -->
+        <div class="shrink-0 w-[118px] h-[118px] flex items-center justify-center">
+          
+          <!-- Анатомічно точна станція Hario V60 з колбою Range Server -->
+          <svg id="vectorDripperV60" class="w-full h-full text-white drop-shadow-[0_8px_22px_rgba(255,255,255,0.22)]" viewBox="0 0 130 130" fill="none" stroke="currentColor">
+            <!-- Верхній рант конуса -->
+            <ellipse cx="60" cy="16" rx="30" ry="5" stroke-width="1.6"/>
+            <ellipse cx="60" cy="16" rx="26" ry="3.8" stroke-width="0.9" stroke-opacity="0.35" stroke-dasharray="2 2"/>
+            
+            <!-- Конус V60 -->
+            <path d="M 30 16 L 50 53 L 70 53 L 90 16" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            
+            <!-- Спіральні ребра Hario Spiral Ribs -->
+            <path d="M 38 18 Q 44 35 53 53" stroke-width="1.1" stroke-opacity="0.75" stroke-linecap="round"/>
+            <path d="M 48 19 Q 52 36 57 53" stroke-width="1.2" stroke-opacity="0.85" stroke-linecap="round"/>
+            <path d="M 60 20 Q 60 37 60 53" stroke-width="1.2" stroke-opacity="0.95" stroke-linecap="round"/>
+            <path d="M 72 19 Q 68 36 63 53" stroke-width="1.2" stroke-opacity="0.85" stroke-linecap="round"/>
+            <path d="M 82 18 Q 76 35 67 53" stroke-width="1.1" stroke-opacity="0.75" stroke-linecap="round"/>
+
+            <!-- Підставка-фланець воронки -->
+            <ellipse cx="60" cy="53" rx="24" ry="3.5" stroke-width="1.3"/>
+            <path d="M 36 53 C 36 56 44 58 60 58 C 76 58 84 56 84 53" stroke-width="1.3"/>
+            <path d="M 56 55 L 56 61 A 4 1.5 0 0 0 64 61 L 64 55" stroke-width="1.2"/>
+
+            <!-- Правильна фірмова петельна ручка воронки V60 -->
+            <path d="M 87 20 C 102 21 106 38 98 48 C 94 52 86 54 80 54" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M 83 25 C 95 26 98 38 91 45 C 87 48 82 49 77 50" stroke-width="1.1" stroke-opacity="0.6" stroke-linecap="round"/>
+
+            <!-- СКЛЯНИЙ СЕРВЕР -->
+            <path d="M 43 62 L 43 68 C 43 70 38 71 35 71 L 41 74" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M 77 62 L 77 69" stroke-width="1.4" stroke-linecap="round"/>
+            
+            <path d="M 41 74 C 32 84 27 104 27 114 C 27 122 34 125 60 125 C 86 125 93 122 93 114 C 93 104 88 84 77 69" stroke-width="1.6" stroke-linecap="round"/>
+            <ellipse cx="60" cy="121" rx="28" ry="3" stroke-width="1" stroke-opacity="0.35"/>
+
+            <path d="M 30 110 Q 60 114 90 110" stroke-width="1.2" stroke-opacity="0.7" stroke-dasharray="2 2"/>
+            <path d="M 29 114 C 31 121 42 124 60 124 C 78 124 89 121 91 114" stroke-width="1" stroke-opacity="0.25" fill="rgba(255,255,255,0.08)"/>
+
+            <line x1="52" y1="86" x2="57" y2="86" stroke-width="1.2" stroke-opacity="0.6" stroke-linecap="round"/>
+            <line x1="50" y1="95" x2="57" y2="95" stroke-width="1.2" stroke-opacity="0.6" stroke-linecap="round"/>
+            <line x1="48" y1="104" x2="57" y2="104" stroke-width="1.2" stroke-opacity="0.6" stroke-linecap="round"/>
+
+            <path d="M 80 73 C 98 75 100 98 84 107" stroke-width="1.7" stroke-linecap="round"/>
+            <path d="M 79 79 C 91 81 93 96 82 102" stroke-width="1.1" stroke-opacity="0.5" stroke-linecap="round"/>
+          </svg>
+
+          <!-- Чашка -->
+          <svg id="vectorDripperCup" class="w-full h-full text-white drop-shadow-[0_8px_22px_rgba(255,255,255,0.22)] hidden" viewBox="0 0 130 130" fill="none" stroke="currentColor">
+            <ellipse cx="60" cy="112" rx="46" ry="7.5" stroke-width="1.7"/>
+            <ellipse cx="60" cy="113.5" rx="34" ry="4" stroke-width="1" stroke-opacity="0.3"/>
+            <ellipse cx="60" cy="46" rx="33" ry="7.5" stroke-width="1.8"/>
+            <ellipse cx="60" cy="50" rx="29" ry="5.5" stroke-width="1" stroke-opacity="0.35" stroke-dasharray="3 2"/>
+            <path d="M 27 46 C 28 88 38 105 60 105 C 82 105 92 88 93 46" stroke-width="1.8" stroke-linecap="round"/>
+            <ellipse cx="60" cy="54" rx="26" ry="4.5" stroke-width="1.2" stroke-dasharray="2 2" stroke-opacity="0.7"/>
+            <path d="M 91 53 C 111 53 113 86 87 90" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M 90 60 C 103 60 104 79 86 82" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M 47 34 Q 44 22 51 12" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.6"/>
+            <path d="M 60 32 Q 57 18 64 8" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.85"/>
+            <path d="M 73 34 Q 70 22 77 12" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.6"/>
+          </svg>
+
+          <!-- Френч-прес -->
+          <svg id="vectorDripperFrench" class="w-full h-full text-white drop-shadow-[0_8px_22px_rgba(255,255,255,0.22)] hidden" viewBox="0 0 130 130" fill="none" stroke="currentColor">
+            <circle cx="58" cy="12" r="5" stroke-width="1.6"/>
+            <line x1="58" y1="17" x2="58" y2="70" stroke-width="1.8"/>
+            <ellipse cx="58" cy="30" rx="26" ry="5.5" stroke-width="1.8"/>
+            <path d="M 33 32 L 25 28 L 33 36" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M 32 30 L 32 108 A 26 5.5 0 0 0 84 108 L 84 30" stroke-width="1.8"/>
+            <ellipse cx="58" cy="70" rx="25" ry="5" stroke-width="1.6"/>
+            <line x1="33" y1="70" x2="83" y2="70" stroke-width="1.3" stroke-dasharray="2 2"/>
+            <line x1="28" y1="113" x2="88" y2="113" stroke-width="2.2" stroke-linecap="round"/>
+            <line x1="32" y1="52" x2="84" y2="52" stroke-width="1.2" stroke-opacity="0.4"/>
+            <line x1="32" y1="88" x2="84" y2="88" stroke-width="1.2" stroke-opacity="0.4"/>
+            <path d="M 84 42 C 106 42 108 92 84 96" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+
+        </div>
+
+        <!-- Характеристики праворуч -->
+        <div class="flex-1 pl-1 space-y-1 text-left min-w-0">
+          <div id="methodNameText" class="text-xs font-bold tracking-tight text-white leading-tight">V60 (1 чашка)</div>
+          
+          <div class="flex items-baseline gap-1.5 flex-wrap">
+            <span id="specCoffeeText" class="text-xs font-mono font-bold text-white tabular-nums">15.0 г</span>
+            <span class="text-[10px] text-chassis-300">мелена кава</span>
+          </div>
+
+          <div class="text-[10.5px] text-chassis-300 leading-tight">
+            <span id="specWaterText" class="font-mono text-white font-semibold">250 г</span> води при <span id="specTempText" class="font-mono text-white font-semibold">93°C</span>
+          </div>
+
+          <div class="flex items-center gap-1 pt-0.5 text-[9.5px] font-mono text-chassis-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+            <span id="specRatioTag">Співвідношення: 1:16.6</span>
+          </div>
+
+          <div class="flex flex-col text-[9.5px] font-mono text-chassis-400 leading-tight">
+            <div class="flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-white/50 shrink-0"></span>
+              <span>Помел: <strong id="specGrindName" class="text-white">Medium</strong></span>
+            </div>
+            <span id="specGrindTag" class="pl-2.5 text-[9px] text-chassis-300 font-semibold">база «MEDIUM» (центр)</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Слайдер інтенсивності -->
+      <div class="titanium-card rounded-xl p-2.5 my-1">
+        <div class="flex items-center justify-between text-xs mb-1">
+          <div>
+            <span class="font-semibold text-white tracking-wide text-xs block">Інтенсивність</span>
+            <span id="intensityDescriptor" class="text-[10px] font-mono text-chassis-300">Збалансований Specialty</span>
+          </div>
+          <div class="text-right">
+            <span id="intensityValueText" class="font-mono font-bold text-sm text-white tabular-nums">80%</span>
+            <span id="intensitySubtag" class="block text-[9.5px] font-mono text-chassis-400">1:16.6</span>
+          </div>
+        </div>
+
+        <div class="relative w-full py-0.5">
+          <input id="intensityRange" type="range" min="40" max="100" value="80" step="10" 
+            class="w-full h-1 bg-chassis-700 rounded-lg appearance-none cursor-pointer accent-white focus:outline-none"/>
+          
+          <div class="flex justify-between items-center px-1 mt-0.5">
+            <span class="w-0.5 h-1.5 bg-chassis-500"></span>
+            <span class="w-0.5 h-1 bg-chassis-600"></span>
+            <span class="w-0.5 h-1.5 bg-chassis-500"></span>
+            <span class="w-0.5 h-1 bg-chassis-600"></span>
+            <span class="w-0.5 h-2 bg-white"></span>
+            <span class="w-0.5 h-1 bg-chassis-600"></span>
+            <span class="w-0.5 h-1.5 bg-chassis-500"></span>
+          </div>
+
+          <div class="flex justify-between items-center text-[9px] font-mono uppercase tracking-wider text-chassis-400 mt-0.5">
+            <span>Легка</span>
+            <span>Баланс</span>
+            <span>Щільна</span>
+          </div>
+        </div>
+
+        <div class="mt-1.5 pt-1.5 border-t border-white/5 text-[10px] text-chassis-300 flex items-start gap-1 leading-tight">
+          <svg class="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <span id="sensoryText" class="flex-1">Класичний солодкий баланс: ягідна соковитість та чистота чашки.</span>
+        </div>
+      </div>
+
+      <!-- Металева кнопка переходу до пульта -->
+      <div class="pt-1">
+        <button id="btnProceedToCockpit" type="button" class="metallic-btn relative w-full py-3 px-5 rounded-full font-bold text-xs tracking-wider uppercase flex items-center justify-center shadow-lg">
+          <span>ДО ЗАВАРЮВАННЯ</span>
+          <svg class="w-4 h-4 stroke-[2.5] absolute right-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- ЕКРАН 2: ПУЛЬТ ЗАВАРЮВАННЯ                                                -->
+    <!-- ========================================================================= -->
+    <section id="screenCockpit" class="screen-view screen-hidden flex-1 flex flex-col justify-between px-4 pt-0 pb-1 select-none overflow-hidden">
+      
+      <!-- Верхній рядок керування -->
+      <div class="flex items-center justify-between mb-0.5">
+        <button id="btnBackToMethod" type="button" class="text-chassis-400 hover:text-white p-1 -ml-1 transition-colors" title="Повернутися">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        
+        <!-- Перемикач Ручний / Авто -->
+        <div class="flex bg-chassis-800 p-0.5 rounded-full border border-white/10 text-[9.5px] font-mono">
+          <button id="modeManualBtn" type="button" class="px-3 py-0.5 rounded-full bg-white text-black font-bold shadow-sm transition-all">Вручну</button>
+          <button id="modeAutoBtn" type="button" class="px-3 py-0.5 rounded-full text-chassis-400 hover:text-white transition-all">Авто</button>
+        </div>
+
+        <!-- Звук вкл/викл -->
+        <button id="btnMuteSound" type="button" class="w-6 h-6 rounded-full bg-chassis-800 border border-white/10 flex items-center justify-center text-xs">
+          <svg id="soundIconStatusOn" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5 10v4a2 2 0 002 2h2l4 4V4L9 8H7a2 2 0 00-2 2z"/></svg>
+          <svg id="soundIconStatusOff" class="w-3 h-3 text-chassis-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h2.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
+        </button>
+      </div>
+
+      <!-- Центральний циферблат -->
+      <div class="flex flex-col items-center justify-center my-auto py-0.5">
+        <div class="relative w-[172px] h-[172px] flex items-center justify-center">
+          
+          <svg class="w-full h-full drop-shadow-2xl" viewBox="0 0 280 280">
+            <circle cx="140" cy="140" r="126" stroke="rgba(255,255,255,0.04)" stroke-width="1" fill="none"/>
+            <circle cx="140" cy="140" r="116" stroke="rgba(255,255,255,0.12)" stroke-width="4.5" fill="none"/>
+            
+            <circle id="cockpitProgressRing" class="circle-progress-ring" cx="140" cy="140" r="116" 
+              stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round" fill="none" stroke-dasharray="729" stroke-dashoffset="0"/>
+          </svg>
+
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2 pointer-events-none">
+            <span id="cockpitStepCounter" class="text-[9px] font-mono font-medium text-chassis-500 uppercase tracking-widest leading-none mb-0.5">КРОК 1 З 3</span>
+            
+            <span id="cockpitStepName" class="text-[11px] font-mono uppercase font-bold tracking-wider text-chassis-200 max-w-[125px] leading-tight text-center">ПОПЕРЕДНЄ<br>ЗМОЧУВАННЯ</span>
+            
+            <div id="cockpitTimeText" class="text-3xl font-mono font-light tracking-tight text-white tabular-nums my-0.5 leading-none">00:00</div>
+            
+            <div id="cockpitStepCountdown" class="text-[9.5px] font-mono text-emerald-400 font-semibold tracking-wide bg-white/5 px-2 py-0.5 rounded-full border border-white/10 whitespace-nowrap leading-none mt-0.5">
+              0 / 40 с
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Плашка вливання та цілі -->
+      <div class="titanium-card rounded-xl p-2.5 my-1">
+        <div class="flex items-center justify-between mb-1">
+          <div class="flex flex-col">
+            <span class="font-mono text-chassis-400 text-[9px] uppercase tracking-wider font-semibold">Влити зараз</span>
+            <span id="cockpitPourAmount" class="font-mono font-extrabold text-emerald-400 text-xl tabular-nums leading-none mt-0.5">+50 г</span>
+          </div>
+          <div class="flex flex-col text-right">
+            <span class="font-mono text-chassis-400 text-[9px] uppercase tracking-wider font-semibold">Ціль на вагах</span>
+            <span id="cockpitTargetGrams" class="font-mono font-semibold text-white text-sm tabular-nums leading-none mt-0.5">50 / 250 г</span>
+          </div>
+        </div>
+
+        <div class="w-full h-1 bg-chassis-800 rounded-full overflow-hidden mb-1">
+          <div id="cockpitLinearWaterBar" class="h-full bg-white transition-all duration-300" style="width: 20%;"></div>
+        </div>
+
+        <p id="cockpitInstructionText" class="text-[11px] text-chassis-300 leading-snug">
+          Влий 50 г води спокійними колами, акуратно покрути воронку і чекай сходу води.
+        </p>
+
+        <div class="mt-1.5 pt-1 border-t border-white/5 flex items-center justify-between text-[9.5px] font-mono text-chassis-400">
+          <span>Орієнтир: <strong id="cockpitStepTargetSec" class="text-white">~40 с</strong></span>
+          <span id="cockpitTotalOptimalFinish">Фініш: <strong class="text-white">~2:35 хв</strong></span>
+        </div>
+      </div>
+
+      <!-- 3 віджети телеметрії внизу -->
+      <div class="grid grid-cols-3 gap-1.5">
+        <div class="titanium-card rounded-lg p-1.5 text-center flex flex-col justify-between items-center min-h-[50px]">
+          <div class="text-[9px] font-mono text-chassis-400 uppercase tracking-wider font-semibold leading-none">Вода</div>
+          <div id="badgeWaterAmount" class="text-xs font-mono font-bold text-white tabular-nums leading-none">50 г</div>
+          <div id="badgeWaterTemp" class="text-[9px] font-mono text-chassis-400 font-medium leading-none">93°C</div>
+        </div>
+        <div class="titanium-card rounded-lg p-1.5 text-center flex flex-col justify-between items-center min-h-[50px]">
+          <div class="text-[9px] font-mono text-chassis-400 uppercase tracking-wider font-semibold leading-none">Кава</div>
+          <div id="badgeCoffeeDose" class="text-xs font-mono font-bold text-white tabular-nums leading-none">15.0 г</div>
+          <div id="badgeIntensityName" class="text-[8.5px] font-mono text-chassis-400 whitespace-nowrap font-medium leading-none">80% · 1:16.6</div>
+        </div>
+        <div class="titanium-card rounded-lg p-1.5 text-center flex flex-col justify-between items-center min-h-[50px]">
+          <div class="text-[9px] font-mono text-chassis-400 uppercase tracking-wider font-semibold leading-none">Помел</div>
+          <div id="badgeGrindLevel" class="text-[11px] font-bold text-white leading-tight">Medium</div>
+          <div id="badgeGrindSub" class="text-[8.5px] font-mono text-chassis-400 leading-none font-medium">DeLonghi</div>
+        </div>
+      </div>
+
+      <!-- Дії пульта -->
+      <div class="pt-1.5 space-y-1">
+        <button id="btnCockpitMainAction" type="button" class="metallic-btn relative w-full py-3 px-5 rounded-full font-bold text-xs tracking-wider uppercase flex items-center justify-center shadow-lg">
+          <svg class="w-3.5 h-3.5 stroke-[2.5] shrink-0 absolute left-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          <span id="labelCockpitMainAction" class="truncate text-center">ПОЧАТИ ЗАВАРЮВАННЯ</span>
+        </button>
+
+        <div class="grid grid-cols-2 gap-1.5">
+          <button id="btnCockpitPause" type="button" class="titanium-card py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider text-chassis-300 hover:text-white transition-colors flex items-center justify-center text-center">
+            Пауза
+          </button>
+          <button id="btnCockpitReset" type="button" class="titanium-card py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider text-chassis-400 hover:text-white transition-colors flex items-center justify-center text-center">
+            Скинути
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- ЕКРАН 3: ДОВІДНИК ОБЛАДНАННЯ                                              -->
+    <!-- ========================================================================= -->
+    <section id="screenSpecs" class="screen-view screen-hidden flex-1 flex flex-col justify-between px-5 pt-1 pb-1 select-none overflow-y-auto no-scrollbar">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <button id="btnBackFromSpecs" type="button" class="text-chassis-400 hover:text-white p-1 -ml-1 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <span class="text-[10px] font-mono uppercase tracking-[0.22em] text-chassis-400">НАЛАШТУВАННЯ ОБЛАДНАННЯ</span>
+          <div class="w-5"></div>
+        </div>
+
+        <h2 class="text-xl font-bold tracking-tight text-white mb-3">Кавомолка та діагностика</h2>
+
+        <div class="titanium-card rounded-2xl p-3.5 mb-3 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="text-xs font-bold text-white">Методи та особливості екстракції</span>
+          </div>
+          <div class="text-[11px] font-mono text-chassis-400 bg-black/40 p-2.5 rounded-xl border border-white/5 space-y-1.5">
+            <div>• <strong class="text-white">Воронка V60:</strong> Проточний метод. Помел Medium. Час ~2:20–2:45 хв.</div>
+            <div>• <strong class="text-white">В чашці (250 мл):</strong> Імерсійний метод. Помел крупніший за V60. Настоювання 4:00 хв, потім зламати шапку ложкою.</div>
+            <div>• <strong class="text-white">Френч-прес (300 мл):</strong> Грубий помел Coarse. Настоювання 4 хв. Сітку опускайте лише до рівня води (не тисніть у дно).</div>
+          </div>
+        </div>
+
+        <div class="titanium-card rounded-2xl p-3.5 mb-3 space-y-2">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+               <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-white">Калібрування кавомолки (DeLonghi Burr)</div>
+              <div class="text-[10px] font-mono text-emerald-400">Шкала відносно центрального «MEDIUM»</div>
+            </div>
+          </div>
+          
+          <div class="text-xs text-chassis-300 leading-relaxed space-y-1.5">
+            <p class="text-[11px] text-chassis-200 bg-white/5 p-2 rounded-lg border border-white/5">
+              💡 <strong>Що означають «крапки»?</strong> Нульовою точкою відліку є напис <span class="font-mono bg-white/10 px-1 py-0.5 rounded text-white">MEDIUM</span>. Крапки в бік <em>COARSE</em> — це кількість поділок (клацань) <strong>праворуч</strong> від центру на грубіший помел.
+            </p>
+            <p>
+              • <strong class="text-white">V60 (1 чашка):</strong> рівно по центру напису <span class="font-mono bg-white/10 px-1 py-0.5 rounded text-white">MEDIUM</span>.<br>
+              • <strong class="text-white">V60 (2 чашки):</strong> від напису MEDIUM відрахувати <strong class="text-white">2 крапки праворуч</strong> у бік COARSE.<br>
+              • <strong class="text-white">В чашці (250 мл):</strong> від напису MEDIUM відрахувати <strong class="text-white">2–3 крапки праворуч</strong> у бік COARSE.<br>
+              • <strong class="text-white">Френч-прес (300 мл):</strong> від напису MEDIUM відрахувати <strong class="text-white">3–4 крапки праворуч</strong> у бік COARSE (найгрубший помел).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-2 pb-1 text-center">
+        <span class="text-[10px] font-mono uppercase tracking-[0.25em] text-chassis-500">PRECISION COFFEE TIMER</span>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- НИЖНЯ НАВІГАЦІЙНА ПАНЕЛЬ                                                  -->
+    <!-- ========================================================================= -->
+    <nav class="bg-chassis-950/95 border-t border-white/10 px-2 py-1.5 grid grid-cols-3 items-center select-none w-full shrink-0">
+      <button id="navTabMethod" type="button" class="w-full flex flex-col items-center justify-center gap-1 py-1 text-center text-white font-semibold">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <span class="text-[10px] font-mono uppercase tracking-wider block text-center">МЕТОД</span>
+      </button>
+      <button id="navTabCockpit" type="button" class="w-full flex flex-col items-center justify-center gap-1 py-1 text-center text-chassis-500 hover:text-white transition-colors">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="text-[10px] font-mono uppercase tracking-wider block text-center">ПУЛЬТ</span>
+      </button>
+      <button id="navTabSpecs" type="button" class="w-full flex flex-col items-center justify-center gap-1 py-1 text-center text-chassis-500 hover:text-white transition-colors">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+        <span class="text-[10px] font-mono uppercase tracking-wider block text-center">ДОВІДНИК</span>
+      </button>
+    </nav>
+
+  </main>
+
+  <script>
+    class CockpitAudio {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playBip() {
+        if (!this.enabled) return;
+        this.init();
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(820, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.04);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.04);
+        } catch (e) {}
+      }
+      playStepAlert() {
+        if (!this.enabled) return;
+        this.init();
+        try {
+          const t = this.ctx.currentTime;
+          [587.33, 880].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t + idx * 0.08);
+            gain.gain.setValueAtTime(0.06, t + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + idx * 0.08 + 0.12);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(t + idx * 0.08);
+            osc.stop(t + idx * 0.08 + 0.12);
+          });
+        } catch (e) {}
+      }
+      playFinishFanfare() {
+        if (!this.enabled) return;
+        this.init();
+        try {
+          const t = this.ctx.currentTime;
+          [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, t + idx * 0.1);
+            gain.gain.setValueAtTime(0.07, t + idx * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + idx * 0.1 + 0.3);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(t + idx * 0.1);
+            osc.stop(t + idx * 0.1 + 0.3);
+          });
+        } catch (e) {}
+      }
+    }
+    const audio = new CockpitAudio();
+
+    let currentMethod = 'v60';
+    let activeServings = 1;
+    let activeIntensity = 80;
+
+    function calculateBrewRecipe(method, cups, intensityPercent) {
+      const ratio = 18 - ((intensityPercent - 40) / 60) * 3; 
+
+      let waterTotal = 250;
+      let targetTimeRange = "2:20 – 2:45 хв";
+      let totalSeconds = 155;
+      let title = "V60 (1 чашка)";
+      let grindShort = "Medium";
+      let grindDetail = "база «MEDIUM» (центр)";
+      let grindSub = "DeLonghi";
+      let temp = 93;
+      let steps = [];
+
+      if (method === 'v60') {
+        waterTotal = cups === 1 ? 250 : 500;
+        targetTimeRange = cups === 1 ? "2:20 – 2:45 хв" : "3:30 – 4:00 хв";
+        totalSeconds = cups === 1 ? 155 : 230;
+        title = `V60 (${cups === 1 ? '1 чашка' : '2 чашки'})`;
+
+        if (intensityPercent <= 50) temp = 91;
+        else if (intensityPercent >= 90) temp = 94;
+
+        if (cups === 1) {
+          if (intensityPercent <= 50) { 
+            grindShort = "Med-Coarse"; 
+            grindDetail = "від «MEDIUM»: +1 крапка до COARSE"; 
+            grindSub = "MEDIUM +1 кр.";
+          } else if (intensityPercent >= 90) { 
+            grindShort = "Med-Fine"; 
+            grindDetail = "від «MEDIUM»: +1 крапка до FINE"; 
+            grindSub = "MEDIUM -1 кр.";
+          } else {
+            grindShort = "Medium";
+            grindDetail = "база «MEDIUM» (по центру)";
+            grindSub = "По центру";
+          }
+        } else {
+          if (intensityPercent <= 50) { 
+            grindShort = "Coarse"; 
+            grindDetail = "від «MEDIUM»: +3 крапки до COARSE"; 
+            grindSub = "MEDIUM +3 кр.";
+          } else if (intensityPercent >= 90) { 
+            grindShort = "Medium"; 
+            grindDetail = "від «MEDIUM»: +1 крапка до COARSE"; 
+            grindSub = "MEDIUM +1 кр.";
+          } else { 
+            grindShort = "Coarse-Med"; 
+            grindDetail = "від «MEDIUM»: +2 крапки до COARSE"; 
+            grindSub = "MEDIUM +2 кр.";
+          }
+        }
+
+        const coffeeGrams = Math.round((waterTotal / ratio) * 10) / 10;
+        const bloomWater = Math.round(coffeeGrams * 3.3);
+
+        if (cups === 1) {
+          const remainingWater = waterTotal - bloomWater;
+          const pour2Amount = Math.round(remainingWater * 0.5);
+          const pour2 = bloomWater + pour2Amount;
+          const pour3Amount = waterTotal - pour2;
+          
+          steps = [
+            {
+              title: "ПОПЕРЕДНЄ<br>ЗМОЧУВАННЯ",
+              pourAmount: bloomWater,
+              target: bloomWater,
+              duration: 40,
+              instruction: `Влий ${bloomWater} г води, акуратно покрути воронку і чекай сходу води.`
+            },
+            {
+              title: "ОСНОВНЕ<br>ВЛИВАННЯ",
+              pourAmount: pour2Amount,
+              target: pour2,
+              duration: 45,
+              instruction: `Влий ще ${pour2Amount} г води (до ${pour2} г на вагах) рівними колами.`
+            },
+            {
+              title: "ФІНАЛЬНЕ<br>ПРОЛИВАННЯ",
+              pourAmount: pour3Amount,
+              target: waterTotal,
+              duration: 70,
+              instruction: `Долий останні ${pour3Amount} г води (до ${waterTotal} г). М'який оберт воронки.`
+            }
+          ];
+        } else {
+          const remainingWater = waterTotal - bloomWater;
+          const p2Amount = Math.round(remainingWater * 0.33);
+          const p2 = bloomWater + p2Amount;
+          const p3Amount = Math.round(remainingWater * 0.33);
+          const p3 = p2 + p3Amount;
+          const p4Amount = waterTotal - p3;
+          
+          steps = [
+            {
+              title: "ПОПЕРЕДНЄ<br>ЗМОЧУВАННЯ",
+              pourAmount: bloomWater,
+              target: bloomWater,
+              duration: 45,
+              instruction: `Влий ${bloomWater} г води, змочи всю каву, покрути воронку.`
+            },
+            {
+              title: "ДРУГЕ<br>ВЛИВАННЯ",
+              pourAmount: p2Amount,
+              target: p2,
+              duration: 45,
+              instruction: `Влий ще ${p2Amount} г води (до ${p2} г на вагах). Струмінь низько.`
+            },
+            {
+              title: "ТРЕТЄ<br>ВЛИВАННЯ",
+              pourAmount: p3Amount,
+              target: p3,
+              duration: 45,
+              instruction: `Влий ще ${p3Amount} г води (до ${p3} г на вагах) рівним струменем.`
+            },
+            {
+              title: "ФІНАЛЬНЕ<br>СТІКАННЯ",
+              pourAmount: p4Amount,
+              target: waterTotal,
+              duration: 95,
+              instruction: `Долий останні ${p4Amount} г (до ${waterTotal} г). Плавний оберт воронки.`
+            }
+          ];
+        }
+
+        return {
+          method,
+          cups,
+          intensityPercent,
+          title,
+          coffee: `${coffeeGrams.toFixed(1)} г`,
+          coffeeNum: coffeeGrams,
+          water: `${waterTotal} г`,
+          waterNum: waterTotal,
+          temp: `${temp}°C`,
+          ratioStr: `1:${ratio.toFixed(1)}`,
+          grindShort,
+          grindDetail,
+          grindSub,
+          descriptor: intensityPercent <= 50 ? "Легкий / Чайне тіло" : (intensityPercent >= 90 ? "Щільний / Солодкий" : "Збалансований Specialty"),
+          sensory: intensityPercent <= 50 ? "Виразна квіткова ароматика та цитрусова яскравість." : (intensityPercent >= 90 ? "Глибокі ноти карамелі, какао та тривалий посмак." : "Класичний солодкий баланс: ягідна соковитість та чистота чашки."),
+          targetTimeRange,
+          totalSeconds,
+          steps
+        };
+      }
+
+      if (method === 'cup') {
+        waterTotal = 250;
+        targetTimeRange = "4:00 – 4:30 хв";
+        totalSeconds = 255;
+        title = "В чашці (250 мл)";
+
+        if (intensityPercent <= 50) temp = 91;
+        else if (intensityPercent >= 90) temp = 95;
+        else temp = 93;
+
+        if (intensityPercent <= 50) {
+          grindShort = "Coarse-Med";
+          grindDetail = "від «MEDIUM»: +3 крапки до COARSE";
+          grindSub = "MEDIUM +3 кр.";
+        } else if (intensityPercent >= 90) {
+          grindShort = "Medium";
+          grindDetail = "від «MEDIUM»: +1 крапка до COARSE";
+          grindSub = "MEDIUM +1 кр.";
+        } else {
+          grindShort = "Med-Coarse";
+          grindDetail = "від «MEDIUM»: +2 крапки до COARSE";
+          grindSub = "MEDIUM +2 кр.";
+        }
+
+        const coffeeGrams = Math.round((waterTotal / ratio) * 10) / 10;
+
+        steps = [
+          {
+            title: "ЗАЛИВАННЯ<br>ВОДИ",
+            actionType: "pour",
+            pourAmount: 250,
+            target: 250,
+            duration: 35,
+            instruction: `Залий усі 250 г води (${temp}°C) активними колами, щоб повністю змочити каву.`
+          },
+          {
+            title: "НАСТОЮВАННЯ<br>(ІМЕРСІЯ)",
+            actionType: "wait",
+            pourAmount: 0,
+            target: 250,
+            duration: 205,
+            instruction: `Не торкайся чашки до 4:00 хв. Кава повільно осідає та віддає солодкість без гіркоти.`
+          },
+          {
+            title: "ЗЛАМ ШАПКИ<br>ТА СЕРВУВАННЯ",
+            actionType: "finish",
+            pourAmount: 0,
+            target: 250,
+            duration: 15,
+            instruction: `Зроби ложкою 3-4 легкі оберти по шапці (кава осяде на дно). Зніми ложкою світлу пінку. Смачного!`
+          }
+        ];
+
+        return {
+          method,
+          cups: 1,
+          intensityPercent,
+          title,
+          coffee: `${coffeeGrams.toFixed(1)} г`,
+          coffeeNum: coffeeGrams,
+          water: `${waterTotal} г`,
+          waterNum: waterTotal,
+          temp: `${temp}°C`,
+          ratioStr: `1:${ratio.toFixed(1)}`,
+          grindShort,
+          grindDetail,
+          grindSub,
+          descriptor: intensityPercent <= 50 ? "Легка чашка (Ніжний настій)" : (intensityPercent >= 90 ? "Щільна насичена чашка" : "Збалансований Cupping"),
+          sensory: intensityPercent <= 50 ? "Делікатний напій з чистою ягідною кислотністю без зайвої міцності." : (intensityPercent >= 90 ? "Глибоке обволікаюче тіло, ноти какао, горіхів та довгий смак." : "Максимальна сортова яскравість, солодкий баланс без паперової фільтрації."),
+          targetTimeRange,
+          totalSeconds,
+          steps
+        };
+      }
+
+      if (method === 'french') {
+        waterTotal = 300;
+        targetTimeRange = "4:30 – 5:00 хв";
+        totalSeconds = 275;
+        title = "Френч-прес (300 мл)";
+
+        if (intensityPercent <= 50) temp = 92;
+        else if (intensityPercent >= 90) temp = 96;
+        else temp = 94;
+
+        if (intensityPercent <= 50) {
+          grindShort = "Extra Coarse";
+          grindDetail = "від «MEDIUM»: +4 крапки до COARSE";
+          grindSub = "MEDIUM +4 кр.";
+        } else if (intensityPercent >= 90) {
+          grindShort = "Med-Coarse";
+          grindDetail = "від «MEDIUM»: +2 крапки до COARSE";
+          grindSub = "MEDIUM +2 кр.";
+        } else {
+          grindShort = "Coarse";
+          grindDetail = "від «MEDIUM»: +3 крапки до COARSE";
+          grindSub = "MEDIUM +3 кр.";
+        }
+
+        const coffeeGrams = Math.round((waterTotal / ratio) * 10) / 10;
+
+        steps = [
+          {
+            title: "ЗАЛИВАННЯ<br>ВОДИ",
+            actionType: "pour",
+            pourAmount: 300,
+            target: 300,
+            duration: 40,
+            instruction: `Влий усі 300 г води (${temp}°C) спокійним струменем. Накрий кришкою з плунжером (не опускаючи сітку).`
+          },
+          {
+            title: "НАСТОЮВАННЯ<br>(ЕКСТРАКЦІЯ)",
+            actionType: "wait",
+            pourAmount: 0,
+            target: 300,
+            duration: 200,
+            instruction: `Залиш на 4 хвилини. Кава екстрагує природні олії та цукри в спокійному стані.`
+          },
+          {
+            title: "ПЛУНЖЕР<br>ТА СЕРВУВАННЯ",
+            actionType: "finish",
+            pourAmount: 0,
+            target: 300,
+            duration: 35,
+            instruction: `Зніми кришку, перемішай шапку ложкою. Опусти сітку лише до рівня води (не тисни в дно!). Розлий у чашку.`
+          }
+        ];
+
+        return {
+          method,
+          cups: 1,
+          intensityPercent,
+          title,
+          coffee: `${coffeeGrams.toFixed(1)} г`,
+          coffeeNum: coffeeGrams,
+          water: `${waterTotal} г`,
+          waterNum: waterTotal,
+          temp: `${temp}°C`,
+          ratioStr: `1:${ratio.toFixed(1)}`,
+          grindShort,
+          grindDetail,
+          grindSub,
+          descriptor: intensityPercent <= 50 ? "Делікатний шовковистий френч" : (intensityPercent >= 90 ? "Максимальна екстракція олій" : "Оксамитовий French Press"),
+          sensory: intensityPercent <= 50 ? "Легке чайне тіло, чистий цитрусовий відтінок та мінімум осаду." : (intensityPercent >= 90 ? "Потужне маслянисте тіло з глибоким шоколадно-пряним профілем." : "Насичене шовковисте тіло з ефірними оліями та щільним посмаком."),
+          targetTimeRange,
+          totalSeconds,
+          steps
+        };
+      }
+    }
+
+    let currentRecipe = calculateBrewRecipe(currentMethod, activeServings, activeIntensity);
+
+    let timerState = {
+      isRunning: false,
+      secondsTotal: 0,
+      stepIndex: 0,
+      stepSeconds: 0,
+      intervalId: null,
+      mode: 'manual'
+    };
+
+    const screenMethod = document.getElementById('screenMethod');
+    const screenCockpit = document.getElementById('screenCockpit');
+    const screenSpecs = document.getElementById('screenSpecs');
+
+    const v60PortionSelector = document.getElementById('v60PortionSelector');
+    const btnSelectCup1 = document.getElementById('btnSelectCup1');
+    const btnSelectCup2 = document.getElementById('btnSelectCup2');
+
+    const methodBtnV60 = document.getElementById('methodBtnV60');
+    const methodBtnCup = document.getElementById('methodBtnCup');
+    const methodBtnFrench = document.getElementById('methodBtnFrench');
+
+    const vectorDripperV60 = document.getElementById('vectorDripperV60');
+    const vectorDripperCup = document.getElementById('vectorDripperCup');
+    const vectorDripperFrench = document.getElementById('vectorDripperFrench');
+
+    function navigateScreen(targetId) {
+      [screenMethod, screenCockpit, screenSpecs].forEach(s => s.classList.add('screen-hidden'));
+      const target = document.getElementById(targetId);
+      if (target) target.classList.remove('screen-hidden');
+
+      const navMap = {
+        'screenMethod': 'navTabMethod',
+        'screenCockpit': 'navTabCockpit',
+        'screenSpecs': 'navTabSpecs'
+      };
+      ['navTabMethod', 'navTabCockpit', 'navTabSpecs'].forEach(tabId => {
+        const btn = document.getElementById(tabId);
+        if (!btn) return;
+        if (navMap[targetId] === tabId) {
+          btn.className = 'w-full flex flex-col items-center justify-center gap-1 py-1 text-center text-white font-semibold';
+        } else {
+          btn.className = 'w-full flex flex-col items-center justify-center gap-1 py-1 text-center text-chassis-500 hover:text-white transition-colors';
+        }
+      });
+    }
+
+    function updateMethodSelectorUI() {
+      const activeClass = 'py-1 px-1 rounded-lg text-[10px] font-mono font-bold tracking-wide transition-all bg-white text-black shadow-md';
+      const inactiveClass = 'py-1 px-1 rounded-lg text-[10px] font-mono font-medium tracking-wide transition-all text-chassis-400 hover:text-white';
+
+      methodBtnV60.className = currentMethod === 'v60' ? activeClass : inactiveClass;
+      methodBtnCup.className = currentMethod === 'cup' ? activeClass : inactiveClass;
+      methodBtnFrench.className = currentMethod === 'french' ? activeClass : inactiveClass;
+
+      vectorDripperV60.classList.toggle('hidden', currentMethod !== 'v60');
+      vectorDripperCup.classList.toggle('hidden', currentMethod !== 'cup');
+      vectorDripperFrench.classList.toggle('hidden', currentMethod !== 'french');
+
+      if (currentMethod === 'v60') {
+        v60PortionSelector.classList.remove('hidden');
+      } else {
+        v60PortionSelector.classList.add('hidden');
+        activeServings = 1;
+      }
+    }
+
+    function updateRecipeUI() {
+      updateMethodSelectorUI();
+      currentRecipe = calculateBrewRecipe(currentMethod, activeServings, activeIntensity);
+
+      if (activeServings === 1) {
+        btnSelectCup1.className = 'py-1 px-2 rounded-lg text-[10px] font-mono font-bold tracking-wide transition-all bg-white text-black border border-white shadow-sm flex items-center justify-center gap-1.5';
+        btnSelectCup1.querySelector('span:first-child').className = 'w-1.5 h-1.5 rounded-full bg-black shrink-0';
+        btnSelectCup2.className = 'py-1 px-2 rounded-lg text-[10px] font-mono font-medium tracking-wide transition-all bg-chassis-850 text-chassis-400 border border-white/10 hover:text-white flex items-center justify-center gap-1.5';
+        btnSelectCup2.querySelector('span:first-child').className = 'w-1.5 h-1.5 rounded-full bg-chassis-500 shrink-0';
+      } else {
+        btnSelectCup2.className = 'py-1 px-2 rounded-lg text-[10px] font-mono font-bold tracking-wide transition-all bg-white text-black border border-white shadow-sm flex items-center justify-center gap-1.5';
+        btnSelectCup2.querySelector('span:first-child').className = 'w-1.5 h-1.5 rounded-full bg-black shrink-0';
+        btnSelectCup1.className = 'py-1 px-2 rounded-lg text-[10px] font-mono font-medium tracking-wide transition-all bg-chassis-850 text-chassis-400 border border-white/10 hover:text-white flex items-center justify-center gap-1.5';
+        btnSelectCup1.querySelector('span:first-child').className = 'w-1.5 h-1.5 rounded-full bg-chassis-500 shrink-0';
+      }
+
+      document.getElementById('methodNameText').textContent = currentRecipe.title;
+      document.getElementById('specCoffeeText').textContent = currentRecipe.coffee;
+      document.getElementById('specWaterText').textContent = currentRecipe.water;
+      document.getElementById('specTempText').textContent = currentRecipe.temp;
+      document.getElementById('specRatioTag').textContent = `Співвідношення: ${currentRecipe.ratioStr}`;
+      document.getElementById('specGrindName').textContent = currentRecipe.grindShort;
+      document.getElementById('specGrindTag').textContent = currentRecipe.grindDetail;
+      document.getElementById('methodOptimalBadge').textContent = currentRecipe.targetTimeRange;
+
+      document.getElementById('intensityValueText').textContent = `${activeIntensity}%`;
+      document.getElementById('intensitySubtag').textContent = currentRecipe.ratioStr;
+      document.getElementById('intensityDescriptor').textContent = currentRecipe.descriptor;
+      document.getElementById('sensoryText').textContent = currentRecipe.sensory;
+
+      resetCockpitTimer();
+      syncCockpitTelemetry();
+    }
+
+    function formatTimeDisplay(sec) {
+      const m = Math.floor(Math.max(0, sec) / 60);
+      const s = Math.max(0, sec) % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function syncCockpitTelemetry() {
+      const cfg = currentRecipe;
+      const steps = cfg.steps;
+
+      document.getElementById('cockpitTimeText').textContent = formatTimeDisplay(timerState.secondsTotal);
+
+      const circumference = 729;
+      const progressRatio = Math.min(timerState.secondsTotal / cfg.totalSeconds, 1);
+      const offset = circumference - (circumference * progressRatio);
+      document.getElementById('cockpitProgressRing').style.strokeDashoffset = offset;
+
+      document.getElementById('badgeCoffeeDose').textContent = cfg.coffee;
+      document.getElementById('badgeGrindLevel').textContent = cfg.grindShort;
+      document.getElementById('badgeGrindSub').textContent = cfg.grindSub;
+      document.getElementById('badgeWaterTemp').textContent = `${cfg.temp}`;
+      document.getElementById('badgeIntensityName').textContent = `${cfg.intensityPercent}% · ${cfg.ratioStr}`;
+
+      if (timerState.stepIndex >= steps.length) {
+        document.getElementById('cockpitStepCounter').textContent = 'ФІНАЛ ✓';
+        document.getElementById('cockpitStepName').innerHTML = 'ПРИГОТУВАННЯ<br>ЗАВЕРШЕНО';
+        document.getElementById('cockpitStepCountdown').textContent = `Загалом: ${formatTimeDisplay(timerState.secondsTotal)}`;
+        document.getElementById('cockpitStepCountdown').className = 'text-[10px] font-mono text-emerald-400 font-semibold tracking-wide bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-500/40 whitespace-nowrap mt-0.5';
+        document.getElementById('cockpitPourAmount').textContent = 'Готово';
+        document.getElementById('cockpitTargetGrams').textContent = `${cfg.waterNum} / ${cfg.waterNum} г`;
+        document.getElementById('cockpitLinearWaterBar').style.width = '100%';
+        document.getElementById('badgeWaterAmount').textContent = `${cfg.waterNum} г`;
+        document.getElementById('cockpitInstructionText').textContent = cfg.method === 'v60' ? 'Зніми воронку. Перемішай каву в сервері. Смачного!' : (cfg.method === 'cup' ? 'Чашка готова до вживання. Смачного!' : 'Френч-прес готовий. Розлий каву по чашках і смакуй!');
+        document.getElementById('labelCockpitMainAction').textContent = 'ГОТОВО ✓';
+        document.getElementById('btnCockpitMainAction').classList.remove('pulse-ready');
+        return;
+      }
+
+      const cur = steps[timerState.stepIndex];
+      document.getElementById('cockpitStepCounter').textContent = `КРОК ${timerState.stepIndex + 1} З ${steps.length}`;
+      document.getElementById('cockpitStepName').innerHTML = cur.title;
+      
+      const countdownEl = document.getElementById('cockpitStepCountdown');
+      const stepTargetSec = cur.duration;
+      const stepCurSec = timerState.stepSeconds;
+      
+      if (stepCurSec <= stepTargetSec) {
+        const remaining = stepTargetSec - stepCurSec;
+        countdownEl.textContent = `${stepCurSec} / ${stepTargetSec} с (-${remaining}с)`;
+        countdownEl.className = 'text-[10px] font-mono text-emerald-400 font-semibold tracking-wide bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10 whitespace-nowrap mt-0.5';
+      } else {
+        const overtime = stepCurSec - stepTargetSec;
+        countdownEl.textContent = `+${overtime} с • Наступний крок`;
+        countdownEl.className = 'text-[10px] font-mono text-amber-300 font-semibold tracking-wide bg-amber-950/50 px-2.5 py-0.5 rounded-full border border-amber-500/40 whitespace-nowrap mt-0.5';
+      }
+
+      document.getElementById('cockpitStepTargetSec').textContent = `~${cur.duration} с`;
+      document.getElementById('cockpitTotalOptimalFinish').innerHTML = `Фініш: <strong class="text-white">${cfg.targetTimeRange}</strong>`;
+
+      if (cur.actionType === "wait") {
+        document.getElementById('cockpitPourAmount').textContent = 'Чекай';
+        document.getElementById('cockpitPourAmount').className = 'font-mono font-bold text-amber-400 text-xl tabular-nums leading-none mt-0.5';
+        document.getElementById('cockpitTargetGrams').textContent = `У чашці: ${cfg.waterNum} г`;
+      } else if (cur.actionType === "finish") {
+        document.getElementById('cockpitPourAmount').textContent = 'Фінал';
+        document.getElementById('cockpitPourAmount').className = 'font-mono font-bold text-white text-xl tabular-nums leading-none mt-0.5';
+        document.getElementById('cockpitTargetGrams').textContent = `Сервування`;
+      } else {
+        document.getElementById('cockpitPourAmount').textContent = cur.pourAmount > 0 ? `+${cur.pourAmount} г` : `0 г`;
+        document.getElementById('cockpitPourAmount').className = 'font-mono font-extrabold text-emerald-400 text-2xl tabular-nums leading-none mt-0.5';
+        document.getElementById('cockpitTargetGrams').textContent = `${cur.target} / ${cfg.waterNum} г`;
+      }
+      
+      const waterPct = Math.min((cur.target / cfg.waterNum) * 100, 100);
+      document.getElementById('cockpitLinearWaterBar').style.width = `${waterPct}%`;
+      document.getElementById('badgeWaterAmount').textContent = `${cur.target} г`;
+      document.getElementById('cockpitInstructionText').textContent = cur.instruction;
+
+      const mainBtn = document.getElementById('btnCockpitMainAction');
+      if (timerState.secondsTotal === 0 && !timerState.isRunning) {
+        document.getElementById('labelCockpitMainAction').textContent = 'ПОЧАТИ ЗАВАРЮВАННЯ';
+        mainBtn.classList.remove('pulse-ready');
+      } else if (!timerState.isRunning && timerState.secondsTotal > 0) {
+        document.getElementById('labelCockpitMainAction').textContent = 'ПРОДОВЖИТИ ТАЙМЕР';
+        mainBtn.classList.remove('pulse-ready');
+      } else {
+        const nextStepNum = timerState.stepIndex + 2;
+        if (nextStepNum <= steps.length) {
+          if (timerState.stepSeconds >= cur.duration) {
+            document.getElementById('labelCockpitMainAction').textContent = `КРОК ВИКОНАНО? ➔ КРОК ${nextStepNum}`;
+          } else {
+            document.getElementById('labelCockpitMainAction').textContent = `ДАЛІ ➔ КРОК ${nextStepNum}`;
+          }
+        } else {
+          document.getElementById('labelCockpitMainAction').textContent = 'ЗАВЕРШИТИ ➔ ФІНАЛ';
+        }
+
+        if (timerState.stepSeconds >= cur.duration) {
+          mainBtn.classList.add('pulse-ready');
+        } else {
+          mainBtn.classList.remove('pulse-ready');
+        }
+      }
+    }
+
+    function advanceCockpitStep() {
+      const cfg = currentRecipe;
+      if (timerState.stepIndex < cfg.steps.length - 1) {
+        timerState.stepIndex++;
+        timerState.stepSeconds = 0;
+        audio.playStepAlert();
+        syncCockpitTelemetry();
+      } else if (timerState.stepIndex === cfg.steps.length - 1) {
+        timerState.stepIndex = cfg.steps.length;
+        pauseCockpitTimer();
+        audio.playFinishFanfare();
+        syncCockpitTelemetry();
+      }
+    }
+
+    function startCockpitTimer() {
+      audio.init();
+      timerState.isRunning = true;
+      document.getElementById('btnCockpitPause').textContent = 'Пауза';
+
+      if (timerState.intervalId) clearInterval(timerState.intervalId);
+      timerState.intervalId = setInterval(() => {
+        timerState.secondsTotal++;
+        timerState.stepSeconds++;
+
+        const cfg = currentRecipe;
+        if (timerState.mode === 'auto' && timerState.stepIndex < cfg.steps.length) {
+          const cur = cfg.steps[timerState.stepIndex];
+          if (cur && timerState.stepSeconds >= cur.duration) {
+            advanceCockpitStep();
+            return;
+          }
+        }
+
+        syncCockpitTelemetry();
+      }, 1000);
+      syncCockpitTelemetry();
+    }
+
+    function pauseCockpitTimer() {
+      timerState.isRunning = false;
+      document.getElementById('btnCockpitPause').textContent = 'Продовжити';
+      if (timerState.intervalId) {
+        clearInterval(timerState.intervalId);
+        timerState.intervalId = null;
+      }
+      syncCockpitTelemetry();
+    }
+
+    function resetCockpitTimer() {
+      pauseCockpitTimer();
+      timerState.secondsTotal = 0;
+      timerState.stepIndex = 0;
+      timerState.stepSeconds = 0;
+      document.getElementById('btnCockpitPause').textContent = 'Пауза';
+      syncCockpitTelemetry();
+    }
+
+    methodBtnV60.addEventListener('click', () => {
+      currentMethod = 'v60';
+      audio.playBip();
+      updateRecipeUI();
+    });
+
+    methodBtnCup.addEventListener('click', () => {
+      currentMethod = 'cup';
+      audio.playBip();
+      updateRecipeUI();
+    });
+
+    methodBtnFrench.addEventListener('click', () => {
+      currentMethod = 'french';
+      audio.playBip();
+      updateRecipeUI();
+    });
+
+    document.getElementById('btnProceedToCockpit').addEventListener('click', () => {
+      navigateScreen('screenCockpit');
+      syncCockpitTelemetry();
+    });
+    document.getElementById('btnBackToMethod').addEventListener('click', () => navigateScreen('screenMethod'));
+    document.getElementById('btnHeaderInfo').addEventListener('click', () => navigateScreen('screenSpecs'));
+    document.getElementById('btnBackFromSpecs').addEventListener('click', () => navigateScreen('screenMethod'));
+
+    document.getElementById('navTabMethod').addEventListener('click', () => navigateScreen('screenMethod'));
+    document.getElementById('navTabCockpit').addEventListener('click', () => {
+      navigateScreen('screenCockpit');
+      syncCockpitTelemetry();
+    });
+    document.getElementById('navTabSpecs').addEventListener('click', () => navigateScreen('screenSpecs'));
+
+    btnSelectCup1.addEventListener('click', () => {
+      activeServings = 1;
+      audio.playBip();
+      updateRecipeUI();
+    });
+
+    btnSelectCup2.addEventListener('click', () => {
+      activeServings = 2;
+      audio.playBip();
+      updateRecipeUI();
+    });
+
+    const intensityRange = document.getElementById('intensityRange');
+    intensityRange.addEventListener('input', (e) => {
+      activeIntensity = parseInt(e.target.value, 10);
+      updateRecipeUI();
+    });
+
+    document.getElementById('btnCockpitMainAction').addEventListener('click', () => {
+      if (!timerState.isRunning && timerState.secondsTotal === 0) {
+        startCockpitTimer();
+      } else if (!timerState.isRunning && timerState.secondsTotal > 0) {
+        startCockpitTimer();
+      } else {
+        advanceCockpitStep();
+      }
+    });
+
+    document.getElementById('btnCockpitPause').addEventListener('click', () => {
+      if (timerState.isRunning) {
+        pauseCockpitTimer();
+      } else {
+        startCockpitTimer();
+      }
+    });
+
+    document.getElementById('btnCockpitReset').addEventListener('click', resetCockpitTimer);
+
+    const modeManualBtn = document.getElementById('modeManualBtn');
+    const modeAutoBtn = document.getElementById('modeAutoBtn');
+
+    modeManualBtn.addEventListener('click', () => {
+      timerState.mode = 'manual';
+      modeManualBtn.className = 'px-3.5 py-1 rounded-full bg-white text-black font-bold shadow-sm transition-all';
+      modeAutoBtn.className = 'px-3.5 py-1 rounded-full text-chassis-400 hover:text-white transition-all';
+      audio.playBip();
+      syncCockpitTelemetry();
+    });
+
+    modeAutoBtn.addEventListener('click', () => {
+      timerState.mode = 'auto';
+      modeAutoBtn.className = 'px-3.5 py-1 rounded-full bg-white text-black font-bold shadow-sm transition-all';
+      modeManualBtn.className = 'px-3.5 py-1 rounded-full text-chassis-400 hover:text-white transition-all';
+      audio.playBip();
+      syncCockpitTelemetry();
+    });
+
+    document.getElementById('btnMuteSound').addEventListener('click', () => {
+      audio.enabled = !audio.enabled;
+      document.getElementById('soundIconStatusOn').classList.toggle('hidden');
+      document.getElementById('soundIconStatusOff').classList.toggle('hidden');
+      if (audio.enabled) audio.playBip();
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateRecipeUI();
+    });
+  </script>
+</body>
+</html>
